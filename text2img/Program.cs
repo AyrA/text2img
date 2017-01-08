@@ -106,13 +106,6 @@ namespace text2img
         /// <returns>Exit code</returns>
         public static int Main(string[] args)
         {
-#if DEBUG
-            /*
-            args = new string[] {
-                @"D:\Allfilez\Downloads\JD\Der.Prinz.aus.Zamunda.1988.German.AC3.BDRip.XviD.iNTERNAL-EXPS\exps-prinzauszamunda-xvid.nfo"
-            };
-            //*/
-#endif
             if (args.Length == 0)
             {
                 Help(EXITCODE.NO_ARGS);
