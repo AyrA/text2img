@@ -40,7 +40,7 @@ namespace text2img
                 E = (Encoding)SourceEncoding.Clone();
             }
 
-            return E.GetString(ReadAll(SourceContent));
+            return E.GetString(SourceContent.GetBytes());
         }
 
         public static string GetText(byte[] Data, Encoding SourceEncoding, bool ForceEncoding)
@@ -54,20 +54,6 @@ namespace text2img
         public static string FixCrLf(string Source)
         {
             return Source.Replace(CRLF, CR).Replace(CR[0], LF[0]).Replace(LF, CRLF);
-        }
-
-        private static byte[] ReadAll(Stream Source)
-        {
-            using (MemoryStream MS = new MemoryStream())
-            {
-                byte[] Data = new byte[1024 * 1024];
-                int i = 0;
-                do
-                {
-                    MS.Write(Data, 0, i = Source.Read(Data, 0, Data.Length));
-                } while (i > 0);
-                return MS.ToArray();
-            }
         }
     }
 }

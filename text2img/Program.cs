@@ -2,6 +2,7 @@
 using System.Text;
 using System.IO;
 using System.Linq;
+using System.Drawing.Imaging;
 
 namespace text2img
 {
@@ -11,6 +12,10 @@ namespace text2img
         /// Default codepage to use
         /// </summary>
         public const int DEFAULT_CP = 437;
+        /// <summary>
+        /// Argument to use console input/output
+        /// </summary>
+        public const string STDIO = "-";
 
         /// <summary>
         /// Command line argument structure
@@ -102,9 +107,11 @@ namespace text2img
         public static int Main(string[] args)
         {
 #if DEBUG
+            /*
             args = new string[] {
                 @"D:\Allfilez\Downloads\JD\Der.Prinz.aus.Zamunda.1988.German.AC3.BDRip.XviD.iNTERNAL-EXPS\exps-prinzauszamunda-xvid.nfo"
             };
+            //*/
 #endif
             if (args.Length == 0)
             {
@@ -129,16 +136,63 @@ namespace text2img
 
             Console.Error.WriteLine("Converting...");
 
-            string Text = TextParser.FixCrLf(TextParser.GetText(File.ReadAllBytes(A.InFile), A.Codepage == null ? Encoding.GetEncoding(DEFAULT_CP) : A.Codepage, A.Codepage == null));
-
-            using (var B = ImageTools.RenderString(Text))
+            byte[] Data;
+            try
             {
-                B.Save(A.OutFile);
+                if (A.InFile == STDIO)
+                {
+                    using (var Str = Console.OpenStandardInput())
+                    {
+                        Data = Str.GetBytes(Console.BufferWidth * Console.BufferHeight - 1);
+                    }
+                    Console.Error.WriteLine("Read {0} bytes from console input", Data.Length);
+                }
+                else
+                {
+                    Data = File.ReadAllBytes(A.InFile);
+                }
+            }
+            catch
+            {
+                Console.Error.WriteLine("Cannot read source file");
+                return (int)EXITCODE.ERR_READ;
+            }
+
+            string Text = TextParser.FixCrLf(TextParser.GetText(Data, A.Codepage == null ? Encoding.GetEncoding(DEFAULT_CP) : A.Codepage, A.Codepage == null));
+
+            var B = ImageTools.RenderString(Text);
+            if (B != null)
+            {
+                if (A.OutFile == STDIO)
+                {
+                    Console.Error.WriteLine("Writing to Console output");
+                    using (var Str = Console.OpenStandardOutput())
+                    {
+                        using (var Temp = new MemoryStream())
+                        {
+                            B.Save(Temp, ImageFormat.Png);
+                            Temp.Position = 0;
+                            Temp.CopyTo(Str, Console.BufferWidth * Console.BufferHeight - 1);
+                        }
+                    }
+                }
+                else
+                {
+                    B.Save(A.OutFile);
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine("Error creating bitmap.");
+                return (int)EXITCODE.ERR_WRITE;
             }
 
 #if DEBUG
-            Console.Error.WriteLine("#END");
-            Console.ReadKey(true);
+            if (!ConsoleEx.IsInputRedirected)
+            {
+                Console.Error.WriteLine("#END");
+                Console.ReadKey(true);
+            }
 #endif
             return (int)EXITCODE.SUCCESS;
         }
@@ -214,7 +268,7 @@ namespace text2img
                         //first unknown argument is input file, second (optional) is output file
                         if (string.IsNullOrEmpty(A.InFile))
                         {
-                            if (!File.Exists(A.InFile = arg))
+                            if (!File.Exists(A.InFile = arg) && A.InFile != STDIO)
                             {
                                 Console.Error.WriteLine("Input file not found");
                                 A.Valid = false;
@@ -222,19 +276,26 @@ namespace text2img
                         }
                         else if (string.IsNullOrEmpty(A.OutFile))
                         {
-                            switch (U.Split('.').Last())
+                            if (arg == STDIO)
                             {
-                                case "PNG":
-                                case "JPG":
-                                case "JPEG":
-                                case "BMP":
-                                case "GIF":
-                                    A.OutFile = arg;
-                                    break;
-                                default:
-                                    Console.Error.WriteLine("Only PNG, JPG, BMP and GIF are supported output formats");
-                                    A.Valid = false;
-                                    break;
+                                A.OutFile = arg;
+                            }
+                            else
+                            {
+                                switch (U.Split('.').Last())
+                                {
+                                    case "PNG":
+                                    case "JPG":
+                                    case "JPEG":
+                                    case "BMP":
+                                    case "GIF":
+                                        A.OutFile = arg;
+                                        break;
+                                    default:
+                                        Console.Error.WriteLine("Only PNG, JPG, BMP and GIF are supported output formats");
+                                        A.Valid = false;
+                                        break;
+                                }
                             }
                         }
                         else
@@ -251,18 +312,25 @@ namespace text2img
             }
 
 
-            //Autogenerate output file
+            //Autogenerate output file if not specified
             if (A.Valid && string.IsNullOrEmpty(A.OutFile))
             {
-                FileInfo FI = new FileInfo(A.InFile);
-                //if file name without extension, we don't need to cut anything.
-                if (string.IsNullOrEmpty(FI.Extension))
+                if (A.InFile == STDIO)
                 {
-                    A.OutFile = A.InFile + ".png";
+                    A.OutFile = STDIO;
                 }
                 else
                 {
-                    A.OutFile = A.InFile.Substring(0, A.InFile.Length - FI.Extension.Length) + ".png";
+                    FileInfo FI = new FileInfo(A.InFile);
+                    //if file name without extension, we don't need to cut anything.
+                    if (string.IsNullOrEmpty(FI.Extension))
+                    {
+                        A.OutFile = A.InFile + ".png";
+                    }
+                    else
+                    {
+                        A.OutFile = A.InFile.Substring(0, A.InFile.Length - FI.Extension.Length) + ".png";
+                    }
                 }
             }
             return A;
@@ -296,15 +364,17 @@ namespace text2img
         {
             Console.Error.WriteLine(@"text2img <infile> [/c:codepage] [outfile]
 
-infile   - text file to read
+infile   - text file to read. Use '{1}' for console input.
 /c       - codepage of the file. If not specified, the application assumes the
            file to be encoded in codepage {0}, unless an UTF-8 BOM is present.
 outfile  - Image file to write. If not specified, the file name and location
-           of the input file is used (will replace file extension with 'PNG')
+           of the input file is used (will replace file extension with 'PNG').
+           Use '{1}' for console output. If infile is '{1}', outfile will be
+           set to '{1}' too if not specified on the command line.
 
 If you are interested in a list of all supported codepages, use /L. This will
 ignore all other arguments.
-The codepage argument can either be the name or the ID.", DEFAULT_CP);
+The codepage argument can either be the name or the ID.", DEFAULT_CP, STDIO);
         }
 
         /// <summary>

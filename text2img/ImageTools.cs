@@ -127,27 +127,35 @@ namespace text2img
                 IS = GetExactSize(Text);
             }
 
-            using (var B = new Bitmap(IS.Width, IS.Height, PixelFormat.Format32bppArgb))
+            try
             {
-                using (var G = Graphics.FromImage(B))
-                {
-                    if (BG.A != 0)
-                    {
-                        using (var BR = new SolidBrush(BG))
-                        {
-                            G.FillRectangle(BR, new Rectangle(0, 0, B.Width, B.Height));
-                        }
-                    }
-                    using (Font F = GetFont())
-                    {
-                        using (var BR = new SolidBrush(FG))
-                        {
-                            G.DrawString(Text, F, BR, new PointF(0, 0));
-                        }
-                    }
-                }
 
-                return (Bitmap)B.Clone();
+                using (var B = new Bitmap(IS.Width, IS.Height, PixelFormat.Format32bppArgb))
+                {
+                    using (var G = Graphics.FromImage(B))
+                    {
+                        if (BG.A != 0)
+                        {
+                            using (var BR = new SolidBrush(BG))
+                            {
+                                G.FillRectangle(BR, new Rectangle(0, 0, B.Width, B.Height));
+                            }
+                        }
+                        using (Font F = GetFont())
+                        {
+                            using (var BR = new SolidBrush(FG))
+                            {
+                                G.DrawString(Text, F, BR, new PointF(0, 0));
+                            }
+                        }
+                    }
+
+                    return (Bitmap)B.Clone();
+                }
+            }
+            catch
+            {
+                return null;
             }
         }
     }
