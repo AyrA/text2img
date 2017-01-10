@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Drawing.Imaging;
+using System.Drawing.Drawing2D;
 
 namespace text2img
 {
@@ -19,6 +20,18 @@ namespace text2img
         private static Font GetFont()
         {
             return new Font("Lucida Console", 12, FontStyle.Regular, GraphicsUnit.Point);
+        }
+
+        /// <summary>
+        /// Defines how text is rendered
+        /// </summary>
+        /// <param name="G">Graphics object</param>
+        private static void SetRenderMode(Graphics G)
+        {
+            G.SmoothingMode = SmoothingMode.HighSpeed;
+            G.InterpolationMode = InterpolationMode.NearestNeighbor;
+            G.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            G.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
         }
 
         /// <summary>
@@ -83,12 +96,13 @@ namespace text2img
         /// <returns>Text size</returns>
         public static Size GetExactSize(string Text)
         {
-            using (Bitmap B = new Bitmap(50, 50))
+            using (Bitmap B = new Bitmap(1, 1))
             {
                 using (Graphics G = Graphics.FromImage(B))
                 {
                     using (Font F = GetFont())
                     {
+                        SetRenderMode(G);
                         var SF = G.MeasureString(Text, F);
                         return new Size((int)Math.Ceiling(SF.Width), (int)Math.Ceiling(SF.Height));
                     }
@@ -117,7 +131,7 @@ namespace text2img
         {
             var TS = GetTextSize(Text);
             Size IS;
-            if (TS.Width > 2000 | TS.Height > 2000)
+            if (TS.Width > 2000 || TS.Height > 2000)
             {
                 var CS = GetCharSize();
                 IS = new Size((int)Math.Ceiling(TS.Width * CS.Width), (int)Math.Ceiling(TS.Height * CS.Height));
@@ -136,16 +150,17 @@ namespace text2img
                     {
                         if (BG.A != 0)
                         {
-                            using (var BR = new SolidBrush(BG))
+                            using (var BB = new SolidBrush(BG))
                             {
-                                G.FillRectangle(BR, new Rectangle(0, 0, B.Width, B.Height));
+                                G.FillRectangle(BB, new Rectangle(0, 0, B.Width, B.Height));
                             }
                         }
                         using (Font F = GetFont())
                         {
-                            using (var BR = new SolidBrush(FG))
+                            SetRenderMode(G);
+                            using (var FB = new SolidBrush(FG))
                             {
-                                G.DrawString(Text, F, BR, new PointF(0, 0));
+                                G.DrawString(Text, F, FB, new PointF(0, 0));
                             }
                         }
                     }
