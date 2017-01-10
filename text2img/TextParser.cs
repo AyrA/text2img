@@ -90,5 +90,15 @@ namespace text2img
         {
             return Source.Replace(CRLF, CR).Replace(CR[0], LF[0]).Replace(LF, CRLF);
         }
+
+        /// <summary>
+        /// Trims all lines at the end
+        /// </summary>
+        /// <param name="Source">Source string</param>
+        /// <returns>Trimmed string</returns>
+        public static string TrimLines(string Source)
+        {
+            return string.Join("\r\n", Array.ConvertAll(Source.TrimEnd().Split('\n'), delegate (string s) { return s.TrimEnd(); }));
+        }
     }
 }
