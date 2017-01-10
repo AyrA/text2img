@@ -19,5 +19,4 @@ You can for example change the font and colors.
 
 ## Use as a service
 
-You only need `ImageTools.cs` and `TextTools.cs`. The files work independent, so if you already have the text functions you need,
-you can just use the `ImageTools.cs`
+You only need `Tools.cs`, `ImageTools.cs` and `TextTools.cs`.
